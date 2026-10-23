@@ -1,0 +1,30 @@
+version: 1
+pages:
+  iotpr3-security:
+    component: oh-layout-page
+    config:
+      label: Безпека IoT (IoTpr3)
+      layoutType: responsive
+      sidebar: false
+      showFullscreen: true
+    slots:
+      default:
+        - component: oh-block
+          config: {}
+          slots:
+            default:
+              - component: oh-grid-row
+                config: {}
+                slots:
+                  default:
+                    - component: oh-grid-col
+                      config:
+                        width: "100"
+                      slots:
+                        default:
+                          - component: oh-webframe-card
+                            config:
+                              src: http://127.0.0.1:5002/security
+                              height: 1800
+                              noBorder: true
+                              noShadow: true

@@ -1,0 +1,3 @@
+# Application-level message protection
+
+TLS protects a network connection; it does not provide end-to-end protection across brokers or stored messages. For E2E payload confidentiality, use an established AEAD (for example AES-GCM or ChaCha20-Poly1305) with unique nonces, authenticated device identity and key rotation. If integrity-only is needed, use HMAC-SHA-256 with a per-device key. Include a monotonically increasing sequence and timestamp, reject stale/replayed messages, and never reuse an AEAD nonce with the same key. Do not invent custom cryptography or store production keys in source control.

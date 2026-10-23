@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Метеостанція IoT</title>
+  <style>
+    :root{color-scheme:dark;--bg:#10151b;--panel:#1a222b;--line:#303c48;--text:#e8edf2;--muted:#aab6c2;--accent:#57c2b4;--warn:#f3bd5b;--bad:#ed6d72}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 Segoe UI,Arial,sans-serif}
+    header{padding:22px max(22px,calc((100vw - 1200px)/2));background:#18212a;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px;position:sticky;top:0;z-index:3}
+    h1{font-size:22px;margin:0}h2{font-size:17px;margin:0 0 14px}h3{font-size:14px;color:var(--muted);margin:0 0 6px}
+    .sub{color:var(--muted);font-size:13px;margin-top:3px}.status{padding:7px 12px;border-radius:999px;background:#203a36;color:#8be0c7;font-size:13px;white-space:nowrap}.status.off{background:#44292b;color:#ff9da0}
+    main{max-width:1200px;margin:24px auto;padding:0 22px 56px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:17px;min-width:0}.metric{font-size:29px;font-weight:650;letter-spacing:-.5px}.unit{font-size:14px;color:var(--muted);margin-left:5px}.health{float:right;font-size:12px;color:var(--accent)}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.spacer{height:18px}.wide{grid-column:span 2}.full{grid-column:1/-1}.muted{color:var(--muted);font-size:13px}.chart{height:190px;width:100%;display:block}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 9px;margin:3px;font-size:12px}
+    input,button,select{background:#10171e;border:1px solid #43515e;color:var(--text);border-radius:7px;padding:9px 11px;font:inherit}input{min-width:120px}button{cursor:pointer;border-color:#318f84;background:#1e625b}button:hover{filter:brightness(1.15)}label{display:grid;gap:5px;color:var(--muted);font-size:13px}.form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.notice{border-left:3px solid var(--warn);padding:9px 12px;background:#2a251b;color:#e9d8b3;font-size:13px;border-radius:4px}.table{width:100%;border-collapse:collapse;font-size:13px}.table td,.table th{border-bottom:1px solid var(--line);text-align:left;padding:8px}.table th{color:var(--muted)}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#10171e;padding:12px;border-radius:8px;max-height:260px;overflow:auto;color:#b9e4dc;font-size:12px}.small{font-size:12px;color:var(--muted)}a{color:var(--accent)}
+    @media(max-width:850px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.wide{grid-column:span 2}.form{grid-template-columns:1fr 1fr}}
+    @media(max-width:560px){header{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.wide,.full{grid-column:span 1}.form{grid-template-columns:1fr}.metric{font-size:26px}}
+  </style>
+</head>
+<body>
+<header><div><h1>Мультипротокольна метеостанція</h1><div class="sub" id="location">Завантаження даних…</div></div><div id="mqtt" class="status off">MQTT: підключення…</div></header>
+<main>
+  <section class="grid" id="metrics"></section>
+  <div class="spacer"></div>
+  <section class="grid">
+    <article class="card wide"><h2>Показники за останню годину</h2><canvas class="chart" id="chart"></canvas><div class="small">Оновлення з API раз на 2 секунди; графік показує історію поточного запуску.</div></article>
+    <article class="card"><h2>Стан протоколів</h2><div id="protocols"></div><div class="spacer"></div><h3>Діагностика датчиків</h3><div id="diagnostics" class="muted"></div></article>
+    <article class="card wide"><h2>Налаштування станції</h2><form id="configForm" class="form">
+      <label>Місце встановлення<input name="location" maxlength="80" required></label>
+      <label>Інтервал вимірювань, с<input name="interval_seconds" type="number" min="1" max="60" required></label>
+      <label>Корекція температури, °C<input name="temperature_c" type="number" step="0.1"></label>
+      <label>Корекція вологості, %<input name="humidity_percent" type="number" step="0.1"></label>
+      <label>Корекція тиску, hPa<input name="pressure_hpa" type="number" step="0.1"></label>
+      <label>Корекція освітленості, lx<input name="light_lux" type="number" step="1"></label>
+      <label>Корекція AQI<input name="air_quality_aqi" type="number" step="1"></label>
+      <label>Корекція швидкості вітру, m/s<input name="wind_speed_ms" type="number" step="0.1"></label>
+      <div class="row" style="align-self:end"><button type="submit">Зберегти конфігурацію</button><span id="configMsg" class="small"></span></div>
+    </form></article>
+    <article class="card"><h2>BLE GATT</h2><div id="bleState" class="notice">Профіль BLE емулюється для ПК. Радіосервіс з PIN-сполученням працює у прошивці ESP32.</div><div class="spacer"></div>
+      <label>Характеристика для читання<select id="bleReadSelect"></select></label><div class="spacer"></div><button id="bleReadBtn" type="button">Read</button><pre id="bleReadResult">Оберіть характеристику та натисніть Read.</pre>
+      <label>Інтервал для BLE Write<input id="bleInterval" type="number" min="1" max="60" value="2"></label><button id="bleWriteBtn" type="button">Записати інтервал через GATT-профіль</button><pre id="bleWriteResult"></pre>
+    </article>
+    <article class="card full"><div class="row" style="justify-content:space-between"><h2 style="margin:0">API та MQTT</h2><a href="/api/docs" target="_blank" rel="noreferrer">OpenAPI JSON</a></div><div class="spacer"></div>
+      <table class="table"><thead><tr><th>Протокол</th><th>Призначення</th><th>Параметри</th></tr></thead><tbody>
+        <tr><td>MQTT</td><td>Телеметрія, статус та команди</td><td>QoS 1, retained; LWT online=false; heartbeat без retain</td></tr>
+        <tr><td>HTTP REST</td><td>Дашборд, історія та налаштування</td><td>GET/POST JSON, CORS, 60 запитів/хв на IP</td></tr>
+        <tr><td>BLE GATT</td><td>Локальне читання, налаштування і сповіщення</td><td>Environmental Sensing 0x181A; Secure Connections + PIN у прошивці</td></tr>
+      </tbody></table><div id="mqttTopics" class="small" style="margin-top:12px"></div>
+    </article>
+  </section>
+</main>
+<script>
+const sensorLabels={temperature:'Температура',humidity:'Вологість',pressure:'Атмосферний тиск',light:'Освітленість',air_quality:'Якість повітря (MQ-135)',wind_speed:'Швидкість вітру'};
+let lastHistory=[];
+async function getJson(url){const r=await fetch(url);if(!r.ok)throw new Error(`${r.status} ${r.statusText}`);return r.json()}
+function renderMetrics(data){const box=document.getElementById('metrics');box.innerHTML='';for(const [key,s] of Object.entries(data.sensors)){const c=document.createElement('article');c.className='card';c.innerHTML=`<span class="health">${s.health?'OK':'FAULT'}</span><h3>${sensorLabels[key]}</h3><div class="metric">${Number(s.value).toLocaleString('uk-UA',{maximumFractionDigits:2})}<span class="unit">${s.unit}</span></div>`;box.append(c)}document.getElementById('location').textContent=`${data.location} • ${data.device_id} • оновлено ${new Date(data.timestamp).toLocaleTimeString('uk-UA')}`}
+function drawChart(samples){lastHistory=samples;const canvas=document.getElementById('chart'),ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,w=canvas.clientWidth,h=canvas.clientHeight;canvas.width=w*dpr;canvas.height=h*dpr;ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);const vals=samples.slice(-120).map(x=>x.sensors.temperature.value);if(vals.length<2){ctx.fillStyle='#aab6c2';ctx.fillText('Накопичення вимірювань…',12,30);return}const min=Math.min(...vals)-1,max=Math.max(...vals)+1,range=Math.max(1,max-min);ctx.strokeStyle='#35434e';ctx.lineWidth=1;for(let i=0;i<4;i++){const y=10+(h-30)*i/3;ctx.beginPath();ctx.moveTo(35,y);ctx.lineTo(w-8,y);ctx.stroke()}ctx.fillStyle='#aab6c2';ctx.font='11px Segoe UI';ctx.fillText(`${max.toFixed(1)} °C`,2,14);ctx.fillText(`${min.toFixed(1)} °C`,2,h-12);ctx.strokeStyle='#57c2b4';ctx.lineWidth=2;ctx.beginPath();vals.forEach((v,i)=>{const x=36+(w-46)*i/(vals.length-1),y=10+(h-30)*(1-(v-min)/range);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});ctx.stroke()}
+async function refresh(){try{const d=await getJson('/api/dashboard'),s=d.sensors,status=d.status,h=d.history;renderMetrics(s);const pill=document.getElementById('mqtt');pill.textContent=`MQTT: ${status.mqtt_connected?'підключено':'перепідключення'}`;pill.className='status'+(status.mqtt_connected?'':' off');document.getElementById('protocols').innerHTML=`<span class="pill">HTTP REST: ONLINE</span><span class="pill">MQTT: ${status.mqtt_connected?'ONLINE':'RETRYING'}</span><span class="pill">BLE GATT: PROFILE READY</span>`;document.getElementById('diagnostics').textContent=`${d.diagnostics.overall}; справні сенсори: ${Object.values(d.diagnostics.sensor_health).filter(Boolean).length}/${Object.keys(d.diagnostics.sensor_health).length}; записів у буфері: ${d.diagnostics.samples_in_memory}; час роботи: ${d.diagnostics.uptime_seconds} с`;drawChart(h);document.getElementById('bleReadSelect').innerHTML=Object.keys(d.ble_profile.characteristics).map(k=>`<option value="${k}">${k} • ${d.ble_profile.characteristics[k].properties.join('/')}</option>`).join('');document.getElementById('mqttTopics').textContent=`Топіки: weather_station/sensors/{temperature,humidity,pressure,light,air_quality,wind_speed}; weather_station/status/{online,battery,diagnostics,heartbeat}; weather_station/config/{interval,location,calibration}.`;const form=document.getElementById('configForm');if(!form.dataset.loaded){form.elements.location.value=d.config.location;form.elements.interval_seconds.value=d.config.interval_seconds;form.elements.temperature_c.value=d.config.calibration.temperature||0;form.elements.humidity_percent.value=d.config.calibration.humidity||0;form.elements.pressure_hpa.value=d.config.calibration.pressure||0;form.elements.light_lux.value=d.config.calibration.light||0;form.elements.air_quality_aqi.value=d.config.calibration.air_quality||0;form.elements.wind_speed_ms.value=d.config.calibration.wind_speed||0;document.getElementById('bleInterval').value=d.config.interval_seconds;form.dataset.loaded='1'}}catch(e){console.error(e)}}
+document.getElementById('configForm').addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(e.currentTarget);const calibration={temperature:Number(f.get('temperature_c')||0),humidity:Number(f.get('humidity_percent')||0),pressure:Number(f.get('pressure_hpa')||0),light:Number(f.get('light_lux')||0),air_quality:Number(f.get('air_quality_aqi')||0),wind_speed:Number(f.get('wind_speed_ms')||0)};const result=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:f.get('location'),interval_seconds:Number(f.get('interval_seconds')),calibration})});const body=await result.json();document.getElementById('configMsg').textContent=result.ok?'Збережено та синхронізовано.':body.error;setTimeout(refresh,200)});
+document.getElementById('bleReadBtn').addEventListener('click',async()=>{const key=document.getElementById('bleReadSelect').value;const result=await getJson(`/api/ble/read/${key}`);document.getElementById('bleReadResult').textContent=JSON.stringify(result,null,2)});
+document.getElementById('bleWriteBtn').addEventListener('click',async()=>{const result=await fetch('/api/ble/write/interval_seconds',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:Number(document.getElementById('bleInterval').value)})});document.getElementById('bleWriteResult').textContent=JSON.stringify(await result.json(),null,2);setTimeout(refresh,200)});
+window.addEventListener('resize',()=>drawChart(lastHistory));refresh();setInterval(refresh,2000);
+</script>
+</body></html>

@@ -1,0 +1,20 @@
+{
+  "device_id": "weather-station-01",
+  "location": "Навчальна лабораторія",
+  "interval_seconds": 2,
+  "mqtt": {
+    "host": "127.0.0.1",
+    "port": 1883,
+    "keepalive_seconds": 30,
+    "qos": 1,
+    "topic_root": "weather_station"
+  },
+  "calibration": {
+    "temperature": 0.0,
+    "humidity": 0.0,
+    "pressure": 0.0,
+    "light": 0.0,
+    "air_quality": 0.0,
+    "wind_speed": 0.0
+  }
+}

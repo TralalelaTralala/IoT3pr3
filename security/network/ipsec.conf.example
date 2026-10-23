@@ -1,0 +1,16 @@
+# strongSwan IKEv2 site-to-site template; use placeholders and test in an isolated lab.
+conn iot-lab
+    keyexchange=ikev2
+    ike=aes256gcm16-prfsha384-ecp384!
+    esp=aes256gcm16-ecp384!
+    dpdaction=restart
+    dpddelay=30s
+    rekey=yes
+    left=%defaultroute
+    leftid=@gateway-a.example.invalid
+    leftsubnet=192.0.2.0/24
+    right=198.51.100.1
+    rightid=@gateway-b.example.invalid
+    rightsubnet=198.51.100.0/24
+    auto=add
+# Configure credentials using protected swanctl secrets, never this file.

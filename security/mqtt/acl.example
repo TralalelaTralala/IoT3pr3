@@ -1,0 +1,8 @@
+# Replace certificate CNs and topic IDs with per-device values.
+user greenhouse-node-01
+topic write weather_station/greenhouse-01/telemetry/#
+topic read weather_station/greenhouse-01/commands/#
+
+user dashboard-reader
+topic read weather_station/+/telemetry/#
+topic read weather_station/status/#

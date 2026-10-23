@@ -1,0 +1,24 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+config.json
+
+# Private material: never commit
+security/keys/**
+security/certs/private/**
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.env
+firmware/include/secrets.h
+
+# Build/output and assignment material
+firmware/.pio/
+*.bin
+*.elf
+report/
+practice-03-iot-protocols_part_*.pdf
